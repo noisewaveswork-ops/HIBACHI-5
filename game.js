@@ -223,7 +223,7 @@ class Bullet {
     }
 }
 
-// ---------- Самонаводящаяся пуля (используется и игроком, и боссом) ----------
+// ---------- Самонаводящаяся пуля ----------
 class HomingBullet extends Bullet {
     constructor(x, y, game) {
         super(x, y, -Math.PI / 2, 6, false);
@@ -238,10 +238,8 @@ class HomingBullet extends Bullet {
     update() {
         let target = null;
         if (this.isEnemy) {
-            // Вражеская самонаводящаяся пуля целится в игрока
             target = this.game.player;
         } else {
-            // Пуля игрока целится в босса
             target = this.game.boss;
         }
 
@@ -254,44 +252,38 @@ class HomingBullet extends Bullet {
             else if (angleDiff < -this.turnSpeed) this.angle -= this.turnSpeed;
             else this.angle = desiredAngle;
         }
-        // Вызов базового движения
         this.x += Math.cos(this.angle) * this.speed;
         this.y += Math.sin(this.angle) * this.speed;
     }
 }
 
-// ---------- Класс босса (Hibachi Stage 5, не TLB) ----------
+// ---------- Класс босса (без спрайта, только хитбокс и HP-бар) ----------
 class Boss {
     constructor(x, y, game) {
         this.x = x;
         this.y = y;
         this.game = game;
-        this.maxHealth = 600;               // уменьшено для лёгкости
+        this.maxHealth = 600;
         this.health = this.maxHealth;
         this.timer = 0;
         this.entered = false;
         this.targetY = 100;
         this.points = 10000;
-        this.phase = 1;               // 1, 2, 3
-        this.phaseChangeTimer = 0;    // для визуального эффекта смены фазы
+        this.phase = 1;
+        this.phaseChangeTimer = 0;
 
-        // Спрайт больше не используется, оставлен только хитбокс и HP-бар
         this.width = 140;
         this.height = 140;
         this.hitboxRadius = 38;
 
-        // Фиксированная позиция после входа
         this.baseX = 200;
         this.baseY = this.targetY;
     }
 
     update() {
         this.timer++;
-
-        // Эффект смены фазы (красная вспышка на HP-баре? У нас нет спрайта, можно мигать баром, но оставим таймер для совместимости)
         if (this.phaseChangeTimer > 0) this.phaseChangeTimer--;
 
-        // Плавный вход
         if (!this.entered) {
             this.y += (this.targetY - this.y) * 0.03;
             if (Math.abs(this.y - this.targetY) < 1) {
@@ -303,7 +295,6 @@ class Boss {
             return;
         }
 
-        // Определяем текущую фазу по здоровью
         const hpPercent = this.health / this.maxHealth;
         let newPhase = 1;
         if (hpPercent <= 0.3) newPhase = 3;
@@ -311,23 +302,19 @@ class Boss {
 
         if (newPhase !== this.phase) {
             this.phase = newPhase;
-            this.phaseChangeTimer = 20;   // вспышка на 20 кадров (будет влиять на отрисовку HP-бара)
-            // Звук смены фазы будет вызван из Game.update()
+            this.phaseChangeTimer = 20;
         }
 
-        // Босс стоит на месте
         this.x = this.baseX;
         this.y = this.baseY;
 
-        // Вызов атак в зависимости от фазы (увеличены интервалы)
+        // Атаки (облегчённые интервалы)
         if (this.phase === 1) {
-            // Фаза 1: двойная спираль каждые 15 кадров (вместо 10)
             if (this.timer % 15 === 0) {
                 this.spiralAttack(12, 4.5, 0.025);
                 this.spiralAttack(8, 5.5, -0.035);
             }
         } else if (this.phase === 2) {
-            // Фаза 2: спирали каждые 12 кадров (вместо 8), конус каждые 70 (вместо 55), хоминг каждые 90 (вместо 70)
             if (this.timer % 12 === 0) {
                 this.spiralAttack(14, 4.8, 0.03);
                 this.spiralAttack(10, 6.0, -0.04);
@@ -338,8 +325,7 @@ class Boss {
             if (this.timer % 90 === 0) {
                 this.homingAttack(4, 4.2);
             }
-        } else { // Фаза 3
-            // Фаза 3: спирали каждые 8 кадров (вместо 5), конус каждые 60 (вместо 40), хоминг каждые 75 (вместо 50)
+        } else {
             if (this.timer % 8 === 0) {
                 this.spiralAttack(16, 5.2, 0.035);
                 this.spiralAttack(12, 6.5, -0.045);
@@ -353,7 +339,6 @@ class Boss {
         }
     }
 
-    // Атака спиралью
     spiralAttack(bulletCount, speed, rotationSpeed) {
         const baseAngle = this.timer * rotationSpeed;
         for (let i = 0; i < bulletCount; i++) {
@@ -365,12 +350,11 @@ class Boss {
         }
     }
 
-    // Веерная атака: конус в сторону игрока
     coneAttack(count, speed) {
         const player = this.game.player;
         if (!player) return;
         const baseAngle = Math.atan2(player.y - this.y, player.x - this.x);
-        const spread = Math.PI / 5;  // ~36 градусов
+        const spread = Math.PI / 5;
         for (let i = 0; i < count; i++) {
             const angleOffset = (i - (count - 1) / 2) * (spread / (count - 1));
             const angle = baseAngle + angleOffset;
@@ -381,7 +365,6 @@ class Boss {
         }
     }
 
-    // Самонаводящиеся пули (вражеские)
     homingAttack(count, speed) {
         for (let i = 0; i < count; i++) {
             const angle = (Math.PI * 2 / count) * i + this.timer * 0.1;
@@ -397,7 +380,6 @@ class Boss {
 
     draw(ctx) {
         ctx.save();
-        // Только HP-бар (спрайт не рисуем)
         const bw = 240, bh = 12, bx = 80, by = 30;
         ctx.fillStyle = '#111';
         ctx.fillRect(bx, by, bw, bh);
@@ -411,13 +393,11 @@ class Boss {
         ctx.lineWidth = 2;
         ctx.strokeRect(bx, by, bw, bh);
 
-        // Мигание рамки при смене фазы
         if (this.phaseChangeTimer > 0 && Math.floor(this.phaseChangeTimer / 3) % 2 === 0) {
             ctx.strokeStyle = '#ff0000';
             ctx.lineWidth = 3;
             ctx.strokeRect(bx, by, bw, bh);
         }
-
         ctx.restore();
     }
 
@@ -444,7 +424,7 @@ class Game {
         this.bgImage = new Image();
         this.bgImage.src = 'assets/background.png';
         this.bgY = 0;
-        this.bgSpeed = 1.5;           // параллакс-скорость
+        this.bgSpeedBase = 0.5;   // постоянная скорость фона
 
         this.playerImage = new Image();
         this.playerImage.src = 'assets/player.png';
@@ -680,7 +660,6 @@ class Game {
                 } else {
                     this.countdownText = '';
                     this.gameRunning = true;
-                    // Создаём босса сразу после обратного отсчёта
                     this.boss = new Boss(200, -50, this);
                 }
             }
@@ -689,7 +668,10 @@ class Game {
 
         if (!this.gameRunning || this.gameOver || this.gameComplete) return;
 
-        this.bgY = (this.bgY + this.bgSpeed) % this.canvas.height;
+        // Параллакс фона от положения игрока + базовая скорость
+        const parallaxStrength = 0.05;
+        const bgDelta = this.bgSpeedBase + (300 - this.player.y) * parallaxStrength;
+        this.bgY = (this.bgY + bgDelta) % this.canvas.height;
 
         this.laserMode = this.laserKeyDown || this.twoFingers;
 
@@ -712,12 +694,12 @@ class Game {
         }
         if (this.isMobile) this.player.update(this.mouseX, this.mouseY);
 
-        // Обновление босса с отслеживанием смены фазы
+        // Обновление босса
         if (this.boss) {
             const oldPhase = this.boss.phase;
             this.boss.update();
             if (this.boss.phase !== oldPhase) {
-                this.sound.bossPhaseChange();   // звук смены фазы
+                this.sound.bossPhaseChange();
             }
             if (this.boss.health <= 0) {
                 this.player.score += this.boss.points;
@@ -733,7 +715,6 @@ class Game {
     }
 
     checkCollisions() {
-        // Пули игрока против босса (увеличенный урон)
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
             if (!bullet.isEnemy && this.boss) {
@@ -742,7 +723,6 @@ class Game {
                 if (Math.sqrt(dx * dx + dy * dy) < this.boss.hitboxRadius) {
                     this.bullets.splice(i, 1);
                     this.sound.bossHit();
-                    // Урон 1.2 для динамики
                     const dmg = bullet.damage ? bullet.damage * 1.2 : 1.2;
                     if (this.boss.hit(dmg)) {
                         this.player.score += this.boss.points;
@@ -754,7 +734,6 @@ class Game {
             }
         }
 
-        // Вражеские пули против игрока
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
             if (bullet.isEnemy) {
@@ -767,7 +746,6 @@ class Game {
             }
         }
 
-        // Столкновение игрока с боссом (радиус 32)
         if (this.boss) {
             const dx = this.boss.x - this.player.x;
             const dy = this.boss.y - this.player.y;
@@ -816,7 +794,6 @@ class Game {
             ctx.strokeRect(0, UI.panelY, 400, UI.panelHeight);
         }
 
-        // Жизни
         const lv = UI.lives;
         for (let i = 0; i < 2; i++) {
             const x = lv.x + i * (lv.size + lv.gap);
@@ -832,14 +809,12 @@ class Game {
             }
         }
 
-        // Счёт
         ctx.font = `${UI.score.size}px "Unbounded", "Unbounded Medium", Arial`;
         ctx.fillStyle = UI.score.color;
         ctx.textAlign = 'right';
         ctx.fillText(`${this.player.score}`, UI.score.x, UI.panelY + UI.score.y);
         ctx.textAlign = 'left';
 
-        // Бомбы
         const bv = UI.bombs;
         if (this.isMobile) {
             for (let i = 0; i < 3; i++) {
@@ -886,7 +861,6 @@ class Game {
             this.ctx.fillRect(0, 0, 400, 600);
         }
 
-        // Босс рисуется, но только HP-бар
         if (this.boss) this.boss.draw(this.ctx);
         
         this.bullets.forEach(b => {
@@ -933,7 +907,7 @@ class Game {
     }
 }
 
-// Обработчики видимости и закрытия попапов
+// ---------- Обработчики событий ----------
 document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
         try {
@@ -958,7 +932,6 @@ window.addEventListener('DOMContentLoaded', () => {
     window.game = new Game();
 });
 
-// Закрытие попапа Tilda
 document.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.t-popup__close');
     if (closeBtn) {
