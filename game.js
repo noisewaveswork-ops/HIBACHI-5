@@ -420,44 +420,6 @@ class Boss {
 
     draw(ctx) {
         ctx.save();
-
-        // Спрайт с эффектом вспышки при смене фазы
-        if (this.sprite && this.sprite.complete && this.sprite.naturalWidth > 0) {
-            if (this.phaseChangeTimer > 0 && Math.floor(this.phaseChangeTimer / 3) % 2 === 0) {
-                // Режим наложения для свечения
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.drawImage(
-                    this.sprite,
-                    this.x - this.width / 2,
-                    this.y - this.height / 2,
-                    this.width,
-                    this.height
-                );
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.drawImage(
-                    this.sprite,
-                    this.x - this.width / 2,
-                    this.y - this.height / 2,
-                    this.width,
-                    this.height
-                );
-            } else {
-                ctx.drawImage(
-                    this.sprite,
-                    this.x - this.width / 2,
-                    this.y - this.height / 2,
-                    this.width,
-                    this.height
-                );
-            }
-        } else {
-            // Запасная отрисовка
-            ctx.fillStyle = '#ff0023';
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, 45, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
         // HP-бар
         const bw = 240, bh = 12, bx = 80, by = 30;
         ctx.fillStyle = '#111';
