@@ -223,7 +223,7 @@ class Bullet {
     }
 }
 
-// ---------- Самонаводящаяся пуля ----------
+// ---------- Самонаводящаяся пуля (используется и игроком, и боссом) ----------
 class HomingBullet extends Bullet {
     constructor(x, y, game) {
         super(x, y, -Math.PI / 2, 6, false);
@@ -238,8 +238,10 @@ class HomingBullet extends Bullet {
     update() {
         let target = null;
         if (this.isEnemy) {
+            // Вражеская самонаводящаяся пуля целится в игрока
             target = this.game.player;
         } else {
+            // Пуля игрока целится в босса
             target = this.game.boss;
         }
 
@@ -252,38 +254,54 @@ class HomingBullet extends Bullet {
             else if (angleDiff < -this.turnSpeed) this.angle -= this.turnSpeed;
             else this.angle = desiredAngle;
         }
+        // Вызов базового движения
         this.x += Math.cos(this.angle) * this.speed;
         this.y += Math.sin(this.angle) * this.speed;
     }
 }
 
-// ---------- Класс босса (без спрайта, только хитбокс и HP-бар) ----------
+// ---------- Класс босса (Hibachi Stage 5, не TLB) ----------
 class Boss {
     constructor(x, y, game) {
         this.x = x;
         this.y = y;
         this.game = game;
-        this.maxHealth = 600;
+        this.maxHealth = 800;
         this.health = this.maxHealth;
         this.timer = 0;
         this.entered = false;
         this.targetY = 100;
         this.points = 10000;
-        this.phase = 1;
-        this.phaseChangeTimer = 0;
+        this.phase = 1;               // 1, 2, 3
+        this.phaseChangeTimer = 0;    // для визуального эффекта смены фазы
 
+        // Спрайт
+        this.sprite = new Image();
+        this.sprite.src = 'assets/hibachi.png';
         this.width = 140;
         this.height = 140;
-        this.hitboxRadius = 38;
+        this.hitboxRadius = 38;       // уменьшен, чтобы совпадать с визуальной частью
 
+        // Параметры случайного движения (три синусоиды для сложной траектории)
         this.baseX = 200;
         this.baseY = this.targetY;
+        this.noisePhaseX1 = Math.random() * 100;
+        this.noisePhaseX2 = Math.random() * 100;
+        this.noisePhaseY1 = Math.random() * 100;
+        this.noiseAmpX = 45;
+        this.noiseAmpY = 30;
+        this.noiseSpeedX1 = 0.027;
+        this.noiseSpeedX2 = 0.041;
+        this.noiseSpeedY1 = 0.019;
     }
 
     update() {
         this.timer++;
+
+        // Эффект смены фазы (красная вспышка спрайта на 20 кадров)
         if (this.phaseChangeTimer > 0) this.phaseChangeTimer--;
 
+        // Плавный вход
         if (!this.entered) {
             this.y += (this.targetY - this.y) * 0.03;
             if (Math.abs(this.y - this.targetY) < 1) {
@@ -295,6 +313,7 @@ class Boss {
             return;
         }
 
+        // Определяем текущую фазу по здоровью
         const hpPercent = this.health / this.maxHealth;
         let newPhase = 1;
         if (hpPercent <= 0.3) newPhase = 3;
@@ -302,43 +321,60 @@ class Boss {
 
         if (newPhase !== this.phase) {
             this.phase = newPhase;
-            this.phaseChangeTimer = 20;
+            this.phaseChangeTimer = 20;   // вспышка на 20 кадров
+            // Звук смены фазы будет вызван из Game.update()
         }
 
-        this.x = this.baseX;
-        this.y = this.baseY;
+       this.x = 200;
+this.y = 100;
+        // Ограничения области движения
+        this.x = Math.max(55, Math.min(345, this.x));
+        this.y = Math.max(55, Math.min(160, this.y));
 
-        // Атаки (облегчённые интервалы)
+        // Вызов атак в зависимости от фазы
         if (this.phase === 1) {
-            if (this.timer % 15 === 0) {
-                this.spiralAttack(12, 4.5, 0.025);
-                this.spiralAttack(8, 5.5, -0.035);
+            // Фаза 1: двойная спираль каждые 10 кадров
+            if (this.timer % 10 === 0) {
+                this.spiralAttack(8, 4.0, 0.02);
+this.spiralAttack(6, 4.8, -0.025);   // быстрое кольцо, 8 пуль (вращение против часовой)
             }
         } else if (this.phase === 2) {
-            if (this.timer % 12 === 0) {
-                this.spiralAttack(14, 4.8, 0.03);
-                this.spiralAttack(10, 6.0, -0.04);
+            // Фаза 2: спирали чаще + веер + самонаводящиеся
+            if (this.timer % 8 === 0) {
+                this.spiralAttack(10, 4.5, 0.025);
+this.spiralAttack(8, 5.0, -0.03);
             }
-            if (this.timer % 70 === 0) {
+            if (this.timer % 55 === 0) {
                 this.coneAttack(7, 5.5);
             }
-            if (this.timer % 90 === 0) {
-                this.homingAttack(4, 4.2);
-            }
-        } else {
-            if (this.timer % 8 === 0) {
+            if (this.phase === 2) {
+
+    if (this.timer % 10 === 0) {
+        this.spiralAttack(12, 4.8, 0.03);
+this.spiralAttack(10, 5.6, -0.035);
+    }
+
+    if (this.timer % 65 === 0) {
+        this.coneAttack(5, 5);
+    }
+
+}
+        } else { // Фаза 3
+            // Фаза 3: очень частые атаки
+            if (this.timer % 5 === 0) {
                 this.spiralAttack(16, 5.2, 0.035);
                 this.spiralAttack(12, 6.5, -0.045);
             }
-            if (this.timer % 60 === 0) {
-                this.coneAttack(9, 6.2);
+            if (this.timer % 40 === 0) {
+                this.coneAttack(7, 5.5);
             }
-            if (this.timer % 75 === 0) {
+            if (this.timer % 50 === 0) {
                 this.homingAttack(6, 4.8);
             }
         }
     }
 
+    // Атака спиралью
     spiralAttack(bulletCount, speed, rotationSpeed) {
         const baseAngle = this.timer * rotationSpeed;
         for (let i = 0; i < bulletCount; i++) {
@@ -350,11 +386,12 @@ class Boss {
         }
     }
 
+    // Веерная атака: конус в сторону игрока
     coneAttack(count, speed) {
         const player = this.game.player;
         if (!player) return;
         const baseAngle = Math.atan2(player.y - this.y, player.x - this.x);
-        const spread = Math.PI / 5;
+        const spread = Math.PI / 5;  // ~36 градусов
         for (let i = 0; i < count; i++) {
             const angleOffset = (i - (count - 1) / 2) * (spread / (count - 1));
             const angle = baseAngle + angleOffset;
@@ -365,6 +402,7 @@ class Boss {
         }
     }
 
+    // Самонаводящиеся пули (вражеские)
     homingAttack(count, speed) {
         for (let i = 0; i < count; i++) {
             const angle = (Math.PI * 2 / count) * i + this.timer * 0.1;
@@ -379,27 +417,37 @@ class Boss {
     }
 
     draw(ctx) {
-        ctx.save();
-        const bw = 240, bh = 12, bx = 80, by = 30;
-        ctx.fillStyle = '#111';
-        ctx.fillRect(bx, by, bw, bh);
-        const hp = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-        hp.addColorStop(0, '#ff0000');
-        hp.addColorStop(0.5, '#ff6600');
-        hp.addColorStop(1, '#ffff00');
-        ctx.fillStyle = hp;
-        ctx.fillRect(bx, by, bw * (this.health / this.maxHealth), bh);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(bx, by, bw, bh);
+    ctx.save();
 
-        if (this.phaseChangeTimer > 0 && Math.floor(this.phaseChangeTimer / 3) % 2 === 0) {
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(bx, by, bw, bh);
-        }
-        ctx.restore();
-    }
+    // Только HP бар
+
+    const bw = 240;
+    const bh = 12;
+    const bx = 80;
+    const by = 30;
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(bx, by, bw, bh);
+
+    const hp = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    hp.addColorStop(0, '#ff0000');
+    hp.addColorStop(0.5, '#ff6600');
+    hp.addColorStop(1, '#ffff00');
+
+    ctx.fillStyle = hp;
+    ctx.fillRect(
+        bx,
+        by,
+        bw * (this.health / this.maxHealth),
+        bh
+    );
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx, by, bw, bh);
+
+    ctx.restore();
+}
 
     hit(damage = 1) {
         this.health -= damage;
@@ -410,6 +458,8 @@ class Boss {
 // ---------- Главный класс игры ----------
 class Game {
     constructor() {
+        this.bgFarY = 0;
+this.bgNearY = 0;
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = 400;
@@ -424,7 +474,7 @@ class Game {
         this.bgImage = new Image();
         this.bgImage.src = 'assets/background.png';
         this.bgY = 0;
-        this.bgSpeedBase = 0.5;   // постоянная скорость фона
+        this.bgSpeed = 0;
 
         this.playerImage = new Image();
         this.playerImage.src = 'assets/player.png';
@@ -647,6 +697,8 @@ class Game {
     }
 
     update() {
+        this.bgFarY += 0.5;
+this.bgNearY += 2;
         if (!this.isMobile) {
             this.player.update(this.mouseX, this.mouseY);
         }
@@ -660,6 +712,7 @@ class Game {
                 } else {
                     this.countdownText = '';
                     this.gameRunning = true;
+                    // Создаём босса сразу после обратного отсчёта
                     this.boss = new Boss(200, -50, this);
                 }
             }
@@ -668,10 +721,7 @@ class Game {
 
         if (!this.gameRunning || this.gameOver || this.gameComplete) return;
 
-        // Параллакс фона от положения игрока + базовая скорость
-        const parallaxStrength = 0.05;
-        const bgDelta = this.bgSpeedBase + (300 - this.player.y) * parallaxStrength;
-        this.bgY = (this.bgY + bgDelta) % this.canvas.height;
+        this.bgY = (this.bgY + this.bgSpeed) % this.canvas.height;
 
         this.laserMode = this.laserKeyDown || this.twoFingers;
 
@@ -694,12 +744,12 @@ class Game {
         }
         if (this.isMobile) this.player.update(this.mouseX, this.mouseY);
 
-        // Обновление босса
+        // Обновление босса с отслеживанием смены фазы
         if (this.boss) {
             const oldPhase = this.boss.phase;
             this.boss.update();
             if (this.boss.phase !== oldPhase) {
-                this.sound.bossPhaseChange();
+                this.sound.bossPhaseChange();   // звук смены фазы
             }
             if (this.boss.health <= 0) {
                 this.player.score += this.boss.points;
@@ -715,6 +765,7 @@ class Game {
     }
 
     checkCollisions() {
+        // Пули игрока против босса (увеличенный урон)
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
             if (!bullet.isEnemy && this.boss) {
@@ -723,6 +774,7 @@ class Game {
                 if (Math.sqrt(dx * dx + dy * dy) < this.boss.hitboxRadius) {
                     this.bullets.splice(i, 1);
                     this.sound.bossHit();
+                    // Урон 1.2 для динамики
                     const dmg = bullet.damage ? bullet.damage * 1.2 : 1.2;
                     if (this.boss.hit(dmg)) {
                         this.player.score += this.boss.points;
@@ -734,6 +786,7 @@ class Game {
             }
         }
 
+        // Вражеские пули против игрока
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
             if (bullet.isEnemy) {
@@ -746,6 +799,7 @@ class Game {
             }
         }
 
+        // Столкновение игрока с боссом (радиус 32)
         if (this.boss) {
             const dx = this.boss.x - this.player.x;
             const dy = this.boss.y - this.player.y;
@@ -794,6 +848,7 @@ class Game {
             ctx.strokeRect(0, UI.panelY, 400, UI.panelHeight);
         }
 
+        // Жизни
         const lv = UI.lives;
         for (let i = 0; i < 2; i++) {
             const x = lv.x + i * (lv.size + lv.gap);
@@ -809,12 +864,14 @@ class Game {
             }
         }
 
+        // Счёт
         ctx.font = `${UI.score.size}px "Unbounded", "Unbounded Medium", Arial`;
         ctx.fillStyle = UI.score.color;
         ctx.textAlign = 'right';
         ctx.fillText(`${this.player.score}`, UI.score.x, UI.panelY + UI.score.y);
         ctx.textAlign = 'left';
 
+        // Бомбы
         const bv = UI.bombs;
         if (this.isMobile) {
             for (let i = 0; i < 3; i++) {
@@ -854,8 +911,43 @@ class Game {
     draw() {
         if (this.bgImage.complete && this.bgImage.naturalWidth > 0) {
             const h = this.canvas.height;
-            this.ctx.drawImage(this.bgImage, 0, this.bgY, this.canvas.width, h);
-            this.ctx.drawImage(this.bgImage, 0, this.bgY - h, this.canvas.width, h);
+            const h = this.canvas.height;
+
+this.ctx.globalAlpha = 0.4;
+
+this.ctx.drawImage(
+    this.bgImage,
+    0,
+    this.bgFarY % h,
+    this.canvas.width,
+    h
+);
+
+this.ctx.drawImage(
+    this.bgImage,
+    0,
+    (this.bgFarY % h) - h,
+    this.canvas.width,
+    h
+);
+
+this.ctx.globalAlpha = 1;
+
+this.ctx.drawImage(
+    this.bgImage,
+    0,
+    this.bgNearY % h,
+    this.canvas.width,
+    h
+);
+
+this.ctx.drawImage(
+    this.bgImage,
+    0,
+    (this.bgNearY % h) - h,
+    this.canvas.width,
+    h
+);
         } else {
             this.ctx.fillStyle = '#0a0a1a';
             this.ctx.fillRect(0, 0, 400, 600);
@@ -907,7 +999,7 @@ class Game {
     }
 }
 
-// ---------- Обработчики событий ----------
+// Обработчики видимости и закрытия попапов
 document.addEventListener('visibilitychange', async () => {
     if (!document.hidden) {
         try {
@@ -932,6 +1024,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.game = new Game();
 });
 
+// Закрытие попапа Tilda
 document.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.t-popup__close');
     if (closeBtn) {
