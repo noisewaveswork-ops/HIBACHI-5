@@ -697,8 +697,6 @@ this.bgNearY = 0;
     }
 
     update() {
-        this.bgFarY += 0.5;
-this.bgNearY += 2;
         if (!this.isMobile) {
             this.player.update(this.mouseX, this.mouseY);
         }
@@ -910,42 +908,14 @@ this.bgNearY += 2;
 
     draw() {
         if (this.bgImage.complete && this.bgImage.naturalWidth > 0) {
-            const h = this.canvas.height;
-
-this.ctx.globalAlpha = 0.4;
-
-this.ctx.drawImage(
-    this.bgImage,
-    0,
-    this.bgFarY % h,
-    this.canvas.width,
-    h
-);
-
-this.ctx.drawImage(
-    this.bgImage,
-    0,
-    (this.bgFarY % h) - h,
-    this.canvas.width,
-    h
-);
-
-this.ctx.globalAlpha = 1;
-
-this.ctx.drawImage(
-    this.bgImage,
-    0,
-    this.bgNearY % h,
-    this.canvas.width,
-    h
-);
-
-this.ctx.drawImage(
-    this.bgImage,
-    0,
-    (this.bgNearY % h) - h,
-    this.canvas.width,
-    h
+    this.ctx.drawImage(
+        this.bgImage,
+        0,
+        0,
+        this.canvas.width,
+        this.canvas.height
+    );
+}
 );
         } else {
             this.ctx.fillStyle = '#0a0a1a';
