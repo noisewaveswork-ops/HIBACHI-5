@@ -907,19 +907,19 @@ this.bgNearY = 0;
     }
 
     draw() {
-        if (this.bgImage.complete && this.bgImage.naturalWidth > 0) {
-    this.ctx.drawImage(
-        this.bgImage,
-        0,
-        0,
-        this.canvas.width,
-        this.canvas.height
-    );
-}
-);
-        } else {
-            this.ctx.fillStyle = '#0a0a1a';
-            this.ctx.fillRect(0, 0, 400, 600);
+    if (this.bgImage.complete && this.bgImage.naturalWidth > 0) {
+        this.ctx.drawImage(
+            this.bgImage,
+            0,
+            0,
+            this.canvas.width,
+            this.canvas.height
+        );
+    } else {
+        this.ctx.fillStyle = '#0a0a1a';
+        this.ctx.fillRect(0, 0, 400, 600);
+    }
+
         }
 
         if (this.boss) this.boss.draw(this.ctx);
