@@ -911,7 +911,6 @@ this.bgNearY += 2;
     draw() {
         if (this.bgImage.complete && this.bgImage.naturalWidth > 0) {
             const h = this.canvas.height;
-            const h = this.canvas.height;
 
 this.ctx.globalAlpha = 0.4;
 
