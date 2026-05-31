@@ -266,7 +266,7 @@ class Boss {
         this.x = x;
         this.y = y;
         this.game = game;
-        this.maxHealth = 800;
+        this.maxHealth = 600;               // уменьшено для лёгкости
         this.health = this.maxHealth;
         this.timer = 0;
         this.entered = false;
@@ -275,30 +275,20 @@ class Boss {
         this.phase = 1;               // 1, 2, 3
         this.phaseChangeTimer = 0;    // для визуального эффекта смены фазы
 
-        // Спрайт
-        this.sprite = new Image();
-        this.sprite.src = 'assets/hibachi.png';
+        // Спрайт больше не используется, оставлен только хитбокс и HP-бар
         this.width = 140;
         this.height = 140;
-        this.hitboxRadius = 38;       // уменьшен, чтобы совпадать с визуальной частью
+        this.hitboxRadius = 38;
 
-        // Параметры случайного движения (три синусоиды для сложной траектории)
+        // Фиксированная позиция после входа
         this.baseX = 200;
         this.baseY = this.targetY;
-        this.noisePhaseX1 = Math.random() * 100;
-        this.noisePhaseX2 = Math.random() * 100;
-        this.noisePhaseY1 = Math.random() * 100;
-        this.noiseAmpX = 45;
-        this.noiseAmpY = 30;
-        this.noiseSpeedX1 = 0.027;
-        this.noiseSpeedX2 = 0.041;
-        this.noiseSpeedY1 = 0.019;
     }
 
     update() {
         this.timer++;
 
-        // Эффект смены фазы (красная вспышка спрайта на 20 кадров)
+        // Эффект смены фазы (красная вспышка на HP-баре? У нас нет спрайта, можно мигать баром, но оставим таймер для совместимости)
         if (this.phaseChangeTimer > 0) this.phaseChangeTimer--;
 
         // Плавный вход
@@ -321,56 +311,43 @@ class Boss {
 
         if (newPhase !== this.phase) {
             this.phase = newPhase;
-            this.phaseChangeTimer = 20;   // вспышка на 20 кадров
+            this.phaseChangeTimer = 20;   // вспышка на 20 кадров (будет влиять на отрисовку HP-бара)
             // Звук смены фазы будет вызван из Game.update()
         }
 
-        // Движение (шум с тремя гармониками)
-        this.noisePhaseX1 += this.noiseSpeedX1;
-        this.noisePhaseX2 += this.noiseSpeedX2;
-        this.noisePhaseY1 += this.noiseSpeedY1;
+        // Босс стоит на месте
+        this.x = this.baseX;
+        this.y = this.baseY;
 
-        const offsetX = Math.sin(this.noisePhaseX1) * this.noiseAmpX
-                      + Math.cos(this.noisePhaseX2 * 2.1) * (this.noiseAmpX * 0.4);
-        const offsetY = Math.cos(this.noisePhaseY1) * this.noiseAmpY
-                      + Math.sin(this.noisePhaseY1 * 1.7) * (this.noiseAmpY * 0.3);
-
-        this.x = this.baseX + offsetX;
-        this.y = this.baseY + offsetY;
-
-        // Ограничения области движения
-        this.x = Math.max(55, Math.min(345, this.x));
-        this.y = Math.max(55, Math.min(160, this.y));
-
-        // Вызов атак в зависимости от фазы
+        // Вызов атак в зависимости от фазы (увеличены интервалы)
         if (this.phase === 1) {
-            // Фаза 1: двойная спираль каждые 10 кадров
-            if (this.timer % 10 === 0) {
-                this.spiralAttack(12, 4.5, 0.025);   // медленное кольцо, 12 пуль
-                this.spiralAttack(8, 5.5, -0.035);   // быстрое кольцо, 8 пуль (вращение против часовой)
+            // Фаза 1: двойная спираль каждые 15 кадров (вместо 10)
+            if (this.timer % 15 === 0) {
+                this.spiralAttack(12, 4.5, 0.025);
+                this.spiralAttack(8, 5.5, -0.035);
             }
         } else if (this.phase === 2) {
-            // Фаза 2: спирали чаще + веер + самонаводящиеся
-            if (this.timer % 8 === 0) {
+            // Фаза 2: спирали каждые 12 кадров (вместо 8), конус каждые 70 (вместо 55), хоминг каждые 90 (вместо 70)
+            if (this.timer % 12 === 0) {
                 this.spiralAttack(14, 4.8, 0.03);
                 this.spiralAttack(10, 6.0, -0.04);
             }
-            if (this.timer % 55 === 0) {
+            if (this.timer % 70 === 0) {
                 this.coneAttack(7, 5.5);
             }
-            if (this.timer % 70 === 0) {
+            if (this.timer % 90 === 0) {
                 this.homingAttack(4, 4.2);
             }
         } else { // Фаза 3
-            // Фаза 3: очень частые атаки
-            if (this.timer % 5 === 0) {
+            // Фаза 3: спирали каждые 8 кадров (вместо 5), конус каждые 60 (вместо 40), хоминг каждые 75 (вместо 50)
+            if (this.timer % 8 === 0) {
                 this.spiralAttack(16, 5.2, 0.035);
                 this.spiralAttack(12, 6.5, -0.045);
             }
-            if (this.timer % 40 === 0) {
+            if (this.timer % 60 === 0) {
                 this.coneAttack(9, 6.2);
             }
-            if (this.timer % 50 === 0) {
+            if (this.timer % 75 === 0) {
                 this.homingAttack(6, 4.8);
             }
         }
@@ -420,7 +397,7 @@ class Boss {
 
     draw(ctx) {
         ctx.save();
-        // HP-бар
+        // Только HP-бар (спрайт не рисуем)
         const bw = 240, bh = 12, bx = 80, by = 30;
         ctx.fillStyle = '#111';
         ctx.fillRect(bx, by, bw, bh);
@@ -433,6 +410,13 @@ class Boss {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.strokeRect(bx, by, bw, bh);
+
+        // Мигание рамки при смене фазы
+        if (this.phaseChangeTimer > 0 && Math.floor(this.phaseChangeTimer / 3) % 2 === 0) {
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(bx, by, bw, bh);
+        }
 
         ctx.restore();
     }
@@ -460,7 +444,7 @@ class Game {
         this.bgImage = new Image();
         this.bgImage.src = 'assets/background.png';
         this.bgY = 0;
-        this.bgSpeed = 0;
+        this.bgSpeed = 1.5;           // параллакс-скорость
 
         this.playerImage = new Image();
         this.playerImage.src = 'assets/player.png';
@@ -902,6 +886,7 @@ class Game {
             this.ctx.fillRect(0, 0, 400, 600);
         }
 
+        // Босс рисуется, но только HP-бар
         if (this.boss) this.boss.draw(this.ctx);
         
         this.bullets.forEach(b => {
